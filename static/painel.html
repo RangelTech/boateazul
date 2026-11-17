@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boate Azul</title>
+<meta name="theme-color" content="#090506">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23090506'/><text x='32' y='44' font-family='Georgia' font-style='italic' font-size='34' text-anchor='middle' fill='%234fc3ff'>B</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/s/estilo.css">
+<link rel="stylesheet" href="/s/app.css">
+</head>
+<body>
+<aside class="lado">
+  <a class="marca" href="/"><span class="neon">Boate Azul</span></a>
+  <nav class="abas" role="tablist">
+    <button role="tab" data-aba="conversa" class="on"><span>💬</span>Minha conversa</button>
+    <button role="tab" data-aba="afinidades"><span>🃏</span>Explorar afinidades</button>
+    <button role="tab" data-aba="nucleo"><span>♥</span>Núcleo do casal<b class="bolha" id="b-nucleo" hidden></b></button>
+    <button role="tab" data-aba="missoes"><span>🌙</span>Missões</button>
+    <button role="tab" data-aba="vinculo"><span>🔗</span>Perfil e vínculo</button>
+  </nav>
+  <div class="lado-pe"><div id="quem" class="quem"></div><button class="link" id="sair">Sair</button></div>
+</aside>
+
+<main class="palco">
+  <!-- conversa privada -->
+  <section class="aba on" id="aba-conversa">
+    <header class="cab"><div><h1>Minha conversa</h1><p>Só você vê. A sua IA lembra de tudo e nunca conta nada a ninguém.</p></div><span class="cadeado">🔒 Privado</span></header>
+    <div class="chat" id="chat"></div>
+    <form class="compor" id="compor"><textarea id="txt" rows="1" placeholder="Conte o que você sente, deseja ou quer viver…" aria-label="Mensagem"></textarea><button class="btn btn-pri" type="submit">Enviar</button></form>
+  </section>
+
+  <!-- cartões de afinidade -->
+  <section class="aba" id="aba-afinidades">
+    <header class="cab"><div><h1>Explorar afinidades</h1><p>Marque em segredo. Só vira descoberta quando o outro também quiser. Ninguém vê o que você respondeu.</p></div></header>
+    <div id="cats"></div>
+  </section>
+
+  <!-- núcleo -->
+  <section class="aba" id="aba-nucleo">
+    <header class="cab"><div><h1>Núcleo do casal</h1><p id="nucleo-sub">O que vocês dois querem, sem saber quem falou primeiro.</p></div></header>
+    <div id="nucleo"></div>
+  </section>
+
+  <!-- missões -->
+  <section class="aba" id="aba-missoes">
+    <header class="cab"><div><h1>Missões</h1><p>Nascem das afinidades de vocês. Uma por vez, no ritmo do casal.</p></div></header>
+    <div id="missoes" class="grade-missoes"></div>
+    <div class="checkin card"><h3>Check-in da semana</h3><p class="mut">De 1 a 5, quão conectados vocês se sentiram? O casal só vê a média dos dois.</p>
+      <div class="notas" id="notas"><button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button><button data-n="5">5</button></div><p id="checkin-msg" class="mut"></p></div>
+  </section>
+
+  <!-- perfil e vínculo -->
+  <section class="aba" id="aba-vinculo">
+    <header class="cab"><div><h1>Perfil e vínculo</h1><p>Seus dados são privados. O vínculo é o que liga as duas contas.</p></div></header>
+    <div class="duas">
+      <form class="card" id="perfil">
+        <h3>Meu perfil</h3>
+        <label>Como quer ser chamado(a)<input name="nome" required maxlength="60"></label>
+        <label>Data de nascimento <small>(só para maiores de 18)</small><input name="nascimento" type="date" required></label>
+        <label>Fase da relação<select name="fase"><option value="">Escolha</option><option>Namorando</option><option>Morando juntos</option><option>Casados</option><option>Casados há muito tempo</option><option>Reconstruindo a relação</option></select></label>
+        <label>O que você quer da Boate<input name="objetivos" maxlength="300" placeholder="Ex.: sair da rotina, falar mais de desejo"></label>
+        <label>Como você gosta de receber carinho<input name="afeto" maxlength="200" placeholder="Ex.: toque, palavras, presentes, tempo junto"></label>
+        <label>Seus limites (a IA respeita sempre)<input name="limites" maxlength="300" placeholder="Ex.: nada com outras pessoas"></label>
+        <label>Tom da conversa<select name="tom"><option value="">Leve e acolhedor</option><option>Romântico</option><option>Divertido</option><option>Direto e ousado</option></select></label>
+        <button class="btn btn-pri" type="submit">Salvar perfil</button><p class="mut" id="perfil-msg"></p>
+      </form>
+      <div class="card" id="vinculo"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="m-entrar" hidden role="dialog" aria-modal="true" aria-labelledby="m-tit"><div class="caixa"><button class="x" data-fechar aria-label="Fechar">×</button></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="/s/login.js" data-conta="/api/conta" data-destino="/app"></script>
+<script src="/s/app.js"></script>
+</body>
+</html>
