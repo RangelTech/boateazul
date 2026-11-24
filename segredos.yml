@@ -1,0 +1,16 @@
+# Só NOMES das variáveis. Os valores ficam no Infisical (nunca no git). Spec 57, seção 0A.2.
+infisical:
+  projeto: rt-produtos
+  pasta: boateazul
+  ambiente: prod
+segredos:
+  - BOATE_ADMIN_KEY
+  - BOATE_CAKTO_SEGREDO
+  - BOATE_DEMO_SENHA
+  - BOATE_LLM_KEY
+  - BOATE_SEGREDO_SESSAO
+  - BOATE_SMTP_FROM
+  - SMTP_HOST
+  - SMTP_PASSWORD
+  - SMTP_PORT
+  - SMTP_USER
