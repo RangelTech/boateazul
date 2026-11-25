@@ -5,6 +5,7 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 from app.config import Config
 
@@ -26,6 +27,8 @@ def enviar(cfg: Config, para: str, assunto: str, texto: str, html: str) -> bool:
     m["From"] = cfg.smtp_from
     m["To"] = para
     m["Subject"] = assunto
+    m["Date"] = formatdate(localtime=True)
+    m["Message-ID"] = make_msgid(domain="rangeltech.net")
     m.set_content(texto)
     m.add_alternative(MOLDE.format(corpo=html), subtype="html")
     try:

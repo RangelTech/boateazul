@@ -1,3 +1,4 @@
+from produtos_core.teste import entrar
 import json
 import os
 
@@ -29,8 +30,7 @@ def amb(tmp_path):
 
     def pessoa(email, nome, nasc="1990-05-10"):
         c = TestClient(app)
-        cod = c.post("/api/entrar/codigo", json={"email": email}).json()["codigo_dev"]
-        assert c.post("/api/entrar", json={"email": email, "codigo": cod}).status_code == 200
+        entrar(c, email)
         assert c.post("/api/perfil", json={"nome": nome, "nascimento": nasc, "limites": "nada com terceiros"}).status_code == 200
         return c
     return app, pessoa
