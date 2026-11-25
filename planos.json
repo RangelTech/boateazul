@@ -1,0 +1,35 @@
+{
+  "_doc": "Contrato de planos do produto (spec 57 §3, item 4). Quem muda preço muda AQUI, no código e na oferta da Cakto; o teste tests/test_planos_contrato.py falha se o código e este arquivo divergirem. Mapa produto da Cakto -> plano e links de checkout ficam no Infisical (nunca no git).",
+  "produto": "boateazul",
+  "moeda": "BRL",
+  "periodo": "mensal",
+  "planos": [
+    {
+      "codigo": "essencial",
+      "nome": "Essencial",
+      "preco": 29.9
+    },
+    {
+      "codigo": "conexao",
+      "nome": "Conexão",
+      "preco": 59.9
+    },
+    {
+      "codigo": "intimo",
+      "nome": "Íntimo",
+      "preco": 99.9
+    }
+  ],
+  "cakto": {
+    "conta": "lucas",
+    "infisical": "rt-produtos/boateazul",
+    "mapa": "BOATE_PLANOS_CAKTO",
+    "checkouts": "BOATE_CHECKOUTS",
+    "webhook": "POST /api/cakto (segredo em BOATE_CAKTO_SEGREDO)",
+    "codigos_vendidos": [
+      "conexao",
+      "essencial",
+      "intimo"
+    ]
+  }
+}
