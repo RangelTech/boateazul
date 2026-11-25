@@ -199,7 +199,7 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
     acesso.registrar(app, db, enviar=lambda para, assunto, texto, html: mailer.enviar(cfg, para, assunto, texto, html),
                      login=_login, usuario=usuario, criar_usuario=lambda email: auth.usuario_por_email(db, email),
                      produto="Boate Azul", base_url=cfg.base_url, destino="/app", cor="#7c5cff",
-                     demo_email=cfg.demo_email, demo_senha=cfg.demo_senha, dev=cfg.dev)  # cadastro e login comuns (spec 57 §5A)
+                     demo_email=lambda: cfg.demo_email, demo_senha=lambda: cfg.demo_senha, dev=cfg.dev)  # cadastro e login comuns (spec 57 §5A)
 
     @app.post("/api/sair")
     def sair(request: Request):

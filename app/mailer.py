@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import smtplib
 import ssl
+import time
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
@@ -31,15 +32,20 @@ def enviar(cfg: Config, para: str, assunto: str, texto: str, html: str) -> bool:
     m["Message-ID"] = make_msgid(domain="rangeltech.net")
     m.set_content(texto)
     m.add_alternative(MOLDE.format(corpo=html), subtype="html")
-    try:
-        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20) as s:
-            s.starttls(context=ssl.create_default_context())
-            s.login(cfg.smtp_user, cfg.smtp_senha)
-            s.send_message(m)
-        return True
-    except Exception as e:  # noqa: BLE001
-        log.error("falha no SMTP para %s: %s", para, e)
-        return False
+    for tentativa in range(3):  # o SMTP da Hostinger às vezes fecha a conexão; tenta de novo (achado no QA de 25/11)
+        try:
+            with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20) as s:
+                s.starttls(context=ssl.create_default_context())
+                s.login(cfg.smtp_user, cfg.smtp_senha)
+                s.send_message(m)
+            return True
+        except Exception as e:  # noqa: BLE001
+            if tentativa < 2:
+                log.warning("SMTP falhou (%s); tentando de novo", e)
+                time.sleep(3 * (tentativa + 1))
+                continue
+            log.error("falha no SMTP para %s: %s", para, e)
+            return False
 
 
 def codigo(cfg: Config, para: str, cod: str) -> bool:
