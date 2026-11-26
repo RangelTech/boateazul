@@ -1,4 +1,4 @@
-"""Configuração do Boate Azul por variáveis de ambiente (segredos em /opt/platform/secrets/boateazul.env)."""
+"""Configuração do VolupIA por variáveis de ambiente (segredos em /opt/platform/secrets/boateazul.env)."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ class Config:
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_senha: str = ""
-    smtp_from: str = "Boate Azul <contato@rangeltech.net>"
+    smtp_from: str = "VolupIA <contato@rangeltech.net>"
     cakto_segredo: str = ""
     checkouts: dict = field(default_factory=dict)          # {"plus": "https://pay.cakto.com.br/..."}
     planos_por_produto: dict = field(default_factory=dict)  # {"<id produto Cakto>": "plus"}
@@ -46,7 +46,7 @@ def carregar() -> Config:
         smtp_port=int(e("SMTP_PORT", "587") or 587),
         smtp_user=e("SMTP_USER", ""),
         smtp_senha=e("SMTP_PASSWORD", ""),
-        smtp_from=e("BOATE_SMTP_FROM", "Boate Azul <contato@rangeltech.net>"),
+        smtp_from=e("BOATE_SMTP_FROM", "VolupIA <contato@rangeltech.net>"),
         cakto_segredo=e("BOATE_CAKTO_SEGREDO", ""),
         checkouts=json.loads(e("BOATE_CHECKOUTS", "") or "{}"),
         planos_por_produto=json.loads(e("BOATE_PLANOS_CAKTO", "") or "{}"),

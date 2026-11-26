@@ -1,4 +1,4 @@
-"""Boate Azul: IA de desejo e intimidade para casais (+18). Spec 45 §G.
+"""VolupIA: IA de desejo e intimidade para casais (+18). Spec 45 §G.
 
 Cada pessoa conversa em particular com a própria IA (memória e sinais só dela). O casal vê só o Núcleo: afinidades que
 os DOIS marcaram (match bilateral, app/match.py) e as missões que nascem delas. A IA de um nunca diz o que o outro falou;
@@ -42,7 +42,7 @@ PLANOS = {
     "intimo": {"nome": "Íntimo", "preco": 99.90, "itens": ["Tudo do Conexão", "Programas de intimidade +18 personalizados", "Fantasias e jogos liberados", "Acompanhamento aprofundado"]},
 }
 
-CABECA = """Você é a assistente privada da Boate Azul, uma IA de relacionamento e intimidade para casais adultos (+18).
+CABECA = """Você é a assistente privada da VolupIA, uma IA de relacionamento e intimidade para casais adultos (+18).
 Siga a skill boate-azul abaixo em tudo.
 === SKILL boate-azul ===
 {skill}
@@ -66,7 +66,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
     os.makedirs(cfg.dados, exist_ok=True)
     db = Banco(os.path.join(cfg.dados, "boateazul.db"))
     admin.preparar(db)
-    app = FastAPI(title="Boate Azul", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="VolupIA", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.cfg, app.state.db = cfg, db
     gw = gateway or whats.Gateway(cfg.canais_url, cfg.canais_token)
 
@@ -249,7 +249,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
 
     acesso.registrar(app, db, enviar=lambda para, assunto, texto, html: mailer.enviar(cfg, para, assunto, texto, html),
                      login=_login, usuario=usuario, criar_usuario=lambda email: auth.usuario_por_email(db, email),
-                     produto="Boate Azul", base_url=cfg.base_url, destino="/app", cor="#7c5cff",
+                     produto="VolupIA", base_url=cfg.base_url, destino="/app", cor="#7c5cff",
                      demo_email=lambda: cfg.demo_email, demo_senha=lambda: cfg.demo_senha, dev=cfg.dev)  # cadastro e login comuns (spec 57 §5A)
     armazenamento.registrar(app, armazenamento.Armazenamento(pasta_local=os.path.join(getattr(cfg, "dados", "") or ".", "arquivos")))  # MinIO (spec 57 §8.6)
 
@@ -292,7 +292,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
         b = await request.json()
         campos = {k: str(b.get(k) or "").strip()[:600] for k in ("nome", "nascimento", "fase", "objetivos", "limites", "afeto", "tom")}
         if campos["nascimento"] and not maior_de_idade(campos["nascimento"]):
-            raise HTTPException(403, "a Boate Azul é só para maiores de 18 anos")
+            raise HTTPException(403, "a VolupIA é só para maiores de 18 anos")
         db.exec("""INSERT INTO perfis(usuario,nome,nascimento,fase,objetivos,limites,afeto,tom,atualizado) VALUES(?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(usuario) DO UPDATE SET nome=excluded.nome, nascimento=excluded.nascimento, fase=excluded.fase,
                    objetivos=excluded.objetivos, limites=excluded.limites, afeto=excluded.afeto, tom=excluded.tom, atualizado=excluded.atualizado""",
@@ -435,7 +435,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
         exigir_adulto(u)
         n = numero_casa()
         if not n:
-            raise HTTPException(503, "o WhatsApp da Boate Azul ainda não está ligado; tente mais tarde")
+            raise HTTPException(503, "o WhatsApp da VolupIA ainda não está ligado; tente mais tarde")
         cod = whats.novo_codigo(db, u["id"], agora())
         return {"codigo": cod, "link": f"https://wa.me/{n}?text={cod}", "vale_min": whats.CODIGO_VALE_S // 60}
 
@@ -459,7 +459,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
         dono = whats.dono_do_codigo(db, texto, agora())
         if dono and not v:
             if numero and db.um("SELECT 1 FROM whats_vinculos WHERE numero=? AND usuario<>?", (numero, dono)):
-                whats_enviar(conversa, "Este número já está vinculado a outra conta da Boate Azul.", chave + ":r")
+                whats_enviar(conversa, "Este número já está vinculado a outra conta da VolupIA.", chave + ":r")
                 return
             db.exec("INSERT INTO whats_vinculos(usuario,conversa,numero,avisos,vinculado) VALUES(?,?,?,1,?) ON CONFLICT(usuario) DO UPDATE SET conversa=excluded.conversa, numero=excluded.numero, vinculado=excluded.vinculado",
                     (dono, conversa, numero, agora()))
@@ -469,7 +469,7 @@ def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None
                          "é a mesma conversa privada do app, só sua.", chave + ":r")
             return
         if not v:
-            whats_enviar(conversa, f"Oi! Aqui é a Boate Azul. Para conversar por aqui, crie sua conta em {cfg.base_url} e toque em "
+            whats_enviar(conversa, f"Oi! Aqui é a VolupIA. Para conversar por aqui, crie sua conta em {cfg.base_url} e toque em "
                          "\"Vincular meu WhatsApp\" no app.", chave + ":r")
             return
         if dono:  # mandou um código, mas este WhatsApp já está vinculado

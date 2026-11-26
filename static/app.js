@@ -1,4 +1,4 @@
-// App da Boate Azul: conversa privada, cartões de afinidade, Núcleo do casal, missões e vínculo.
+// App da VolupIA: conversa privada, cartões de afinidade, Núcleo do casal, missões e vínculo.
 ;(() => {
   const $ = (q, r = document) => r.querySelector(q)
   const $$ = (q, r = document) => [...r.querySelectorAll(q)]
@@ -161,7 +161,7 @@
       const link = `${location.origin}/?convite=${c.codigo}`
       el.innerHTML = `<h3>Convite pronto</h3><p class="mut">Mande este link (ou o código) para quem você ama. Quando entrar, o Núcleo do casal se abre.</p>
         <div class="codigo">${esc(c.codigo)}</div><div class="linha"><button class="btn btn-pri" id="copiar">Copiar link do convite</button>
-        <a class="btn btn-sec" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('Vem comigo para a Boate Azul? ' + link)}">Mandar no WhatsApp</a></div>
+        <a class="btn btn-sec" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('Vem comigo para a VolupIA? ' + link)}">Mandar no WhatsApp</a></div>
         <div class="linha"><button class="link" id="cancelar">Cancelar convite</button></div>`
       $('#copiar').onclick = async () => { try { await navigator.clipboard.writeText(link); toast('Link copiado.') } catch { toast(link) } }
       $('#cancelar').onclick = async () => { await api('POST', '/api/casal/desvincular'); carregarVinculo() }
@@ -234,7 +234,7 @@
   // ---------- início ----------
   ;(async () => {
     await carregarConta()
-    if (!conta.adulto) { irAba('vinculo'); toast('Complete o perfil (data de nascimento) para começar. A Boate é só para maiores de 18.'); return }
+    if (!conta.adulto) { irAba('vinculo'); toast('Complete o perfil (data de nascimento) para começar. A VolupIA é só para maiores de 18.'); return }
     if (pendente() && !conta.casal) { await usarConvite(pendente()) }
     irAba((location.hash || '#conversa').slice(1))
     atualizarBolhaNucleo()

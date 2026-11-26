@@ -1,4 +1,4 @@
-"""Temas, estados e o motor de match bilateral da Boate Azul.
+"""Temas, estados e o motor de match bilateral da VolupIA.
 
 Regra que não quebra (spec 45 §G): revelar_match = elegivel(A, tema) AND elegivel(B, tema) AND vinculo_ativo.
 O casal nunca vê quem trouxe o tema, quem marcou primeiro, nem o que não deu match.

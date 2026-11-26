@@ -1,4 +1,4 @@
-// Boate Azul: cortina que abre, balões que se fundem no scroll, quiz do mapa inicial, contador e convite.
+// VolupIA: cortina que abre, balões que se fundem no scroll, quiz do mapa inicial, contador e convite.
 ;(() => {
   const $ = (q, r = document) => r.querySelector(q)
   const $$ = (q, r = document) => [...r.querySelectorAll(q)]
@@ -41,8 +41,8 @@
     const barra = $('.barra i', caixa)
     const ir = (n) => { $$('.q', caixa).forEach((q) => q.classList.toggle('on', +q.dataset.q === n)); barra.style.width = (n / 3 * 100) + '%' }
     const PERFIS = {
-      conversa: ['Cúmplices de alma', 'Vocês querem se reencontrar nas palavras. A Boate vai abrir conversas que vocês adiam há tempos, no tempo de cada um.', ['Conversas profundas', 'Planos a dois', 'Carinho no dia a dia']],
-      novidade: ['Aventureiros em pausa', 'A rotina engoliu as surpresas. A Boate vai descobrir que tipo de novidade empolga vocês dois e entregar missões prontas.', ['Escapadas surpresa', 'Encontros novos', 'Primeiras vezes']],
+      conversa: ['Cúmplices de alma', 'Vocês querem se reencontrar nas palavras. A VolupIA vai abrir conversas que vocês adiam há tempos, no tempo de cada um.', ['Conversas profundas', 'Planos a dois', 'Carinho no dia a dia']],
+      novidade: ['Aventureiros em pausa', 'A rotina engoliu as surpresas. A VolupIA vai descobrir que tipo de novidade empolga vocês dois e entregar missões prontas.', ['Escapadas surpresa', 'Encontros novos', 'Primeiras vezes']],
       desejo: ['Fogo guardado', 'O desejo está aí, só falta coragem de falar. Cada um conta em segredo; o que for dos dois aparece na hora certa.', ['Intimidade sem pressa', 'Fantasias leves', 'Noites especiais']],
     }
     caixa.addEventListener('click', (e) => {

@@ -14,9 +14,9 @@ log = logging.getLogger("boateazul.mail")
 
 MOLDE = """<!doctype html><html><body style="margin:0;background:#0b0b10;font-family:Arial,Helvetica,sans-serif;color:#f4f4f6">
 <div style="max-width:520px;margin:0 auto;padding:32px 24px">
-<div style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:24px">Boate <span style="color:#ff3b4e">Azul</span></div>
+<div style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:24px">Volup<span style="color:#ff3b4e">IA</span></div>
 {corpo}
-<p style="color:#8b8b98;font-size:12px;margin-top:32px">Boate Azul, um produto Rangel Tech. Se você não pediu este e-mail, ignore.</p>
+<p style="color:#8b8b98;font-size:12px;margin-top:32px">VolupIA, um produto Rangel Tech. Se você não pediu este e-mail, ignore.</p>
 </div></body></html>"""
 
 
@@ -49,10 +49,10 @@ def enviar(cfg: Config, para: str, assunto: str, texto: str, html: str) -> bool:
 
 
 def codigo(cfg: Config, para: str, cod: str) -> bool:
-    html = (f'<p style="font-size:16px">Seu código para entrar no Boate Azul:</p>'
+    html = (f'<p style="font-size:16px">Seu código para entrar no VolupIA:</p>'
             f'<div style="font-size:36px;font-weight:800;letter-spacing:8px;background:#17171f;border-radius:12px;padding:18px;text-align:center">{cod}</div>'
             f'<p style="color:#8b8b98">Vale por 15 minutos.</p>')
-    return enviar(cfg, para, f"{cod} é o seu código do Boate Azul", f"Seu código para entrar no Boate Azul: {cod}\nVale por 15 minutos.", html)
+    return enviar(cfg, para, f"{cod} é o seu código do VolupIA", f"Seu código para entrar no VolupIA: {cod}\nVale por 15 minutos.", html)
 
 
 def pronto(cfg: Config, para: str, n: int, titulo: str, tipo: str = "cortes") -> bool:

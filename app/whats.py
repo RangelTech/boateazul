@@ -1,4 +1,4 @@
-"""WhatsApp da Boate Azul (spec 59): um número da casa no gateway de canais; cada pessoa vincula o PRÓPRIO número mandando um
+"""WhatsApp da VolupIA (spec 59): um número da casa no gateway de canais; cada pessoa vincula o PRÓPRIO número mandando um
 código do próprio aparelho (prova de posse sem SMS). A conversa pelo WhatsApp é a mesma conversa privada do app.
 
 Gateway: contrato `chatwoot-rt/docs/canais/CONTRATO_GATEWAY.md` (mesmo cliente do Atende AI). Avisos ao casal nunca levam o
@@ -14,7 +14,7 @@ import time
 
 import httpx
 
-CONTA_CASA = 7100001          # conta fixa da Boate Azul no gateway (Atende AI usa 7000000 + usuário)
+CONTA_CASA = 7100001          # conta fixa da VolupIA no gateway (Atende AI usa 7000000 + usuário)
 CODIGO_VALE_S = 15 * 60
 CODIGO_TENTATIVAS = 5
 PADRAO_CODIGO = re.compile(r"AZUL[-\s]?(\d{6})", re.I)

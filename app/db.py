@@ -1,4 +1,4 @@
-"""Banco da Boate Azul: SQLite num volume (/data). Hora em epoch (s).
+"""Banco da VolupIA: SQLite num volume (/data). Hora em epoch (s).
 
 Privacidade é estrutural: tudo que a pessoa conta (mensagens, memória, sinais) é por `usuario`; o casal só enxerga
 `matches` e `missoes`, que só nascem quando os DOIS marcaram o mesmo tema como elegível (app/match.py).
