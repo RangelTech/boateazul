@@ -1,12 +1,12 @@
 <!-- readme-padrao -->
-# Boate Azul
+# VolupIA
 
-> Boate Azul (azul.rangeltech.net): IA de desejo e intimidade para casais +18 — conversa privada de cada um, match bilateral de afinidades (Núcleo), missões. Use para mexer na Boate Azul.
+> VolupIA (azul.rangeltech.net): IA de desejo e intimidade para casais +18 — conversa privada de cada um, match bilateral de afinidades (Núcleo), missões. Use para mexer na VolupIA.
 
-![Tela inicial do Boate Azul](docs/img/landing.webp)
+![Tela inicial do VolupIA](docs/img/landing.webp)
 
 ## O que é
-Boate Azul (azul.rangeltech.net): IA de desejo e intimidade para casais +18 — conversa privada de cada um, match bilateral de afinidades (Núcleo), missões. Use para mexer na Boate Azul.
+VolupIA (azul.rangeltech.net): IA de desejo e intimidade para casais +18 — conversa privada de cada um, match bilateral de afinidades (Núcleo), missões. Use para mexer na VolupIA.
 
 Estado: **no ar**. Produto da Rangel Tech, vendido pela Cakto (conta do Lucas). Registro único dos produtos: `vps_rt_infra/registro/produtos.yml` (spec 57).
 
