@@ -26,6 +26,10 @@ class Config:
     demo_email: str = ""
     demo_senha: str = ""
     lancamento_ate: str = "2026-12-15"
+    canais_url: str = "http://chatwoot-bridge:8100"         # gateway de canais (spec 59)
+    canais_token: str = ""
+    webhook_base: str = "http://boateazul:8000"             # como o gateway enxerga este serviço
+    whats_numero: str = ""                                  # número da casa (só dígitos), se o gateway não informar
     dev: bool = False
 
 
@@ -50,5 +54,9 @@ def carregar() -> Config:
         demo_email=e("BOATE_DEMO_EMAIL", ""),
         demo_senha=e("BOATE_DEMO_SENHA", ""),
         lancamento_ate=e("BOATE_LANCAMENTO_ATE", "2026-12-15"),
+        canais_url=e("BOATE_CANAIS_URL", "http://chatwoot-bridge:8100").rstrip("/"),
+        canais_token=e("BOATE_CANAIS_TOKEN", ""),
+        webhook_base=e("BOATE_WEBHOOK_BASE", "http://boateazul:8000").rstrip("/"),
+        whats_numero=e("BOATE_WHATS_NUMERO", ""),
         dev=e("BOATE_DEV", "") == "1",
     )

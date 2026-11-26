@@ -146,6 +146,7 @@
   }
   async function carregarVinculo() {
     await carregarConta()
+    carregarWhats()
     const el = $('#vinculo')
     const c = conta.casal
     if (!c) {
@@ -175,6 +176,39 @@
       toast('Pronto.')
       carregarVinculo()
     }))
+  }
+  // ---------- WhatsApp (spec 59): cada um vincula o próprio número mandando um código do próprio aparelho ----------
+  let esperaWhats = null
+  async function carregarWhats() {
+    const el = $('#whats')
+    let w
+    try { w = await api('GET', '/api/whats') } catch { el.hidden = true; return }
+    el.hidden = false
+    if (w.vinculado) {
+      clearInterval(esperaWhats); esperaWhats = null
+      el.innerHTML = `<h3>WhatsApp vinculado</h3><p class="mut">Número <b>${esc(w.numero)}</b>. Converse com a sua assistente pelo WhatsApp: é a mesma conversa privada daqui, só sua.</p>
+        <label class="linha" style="gap:8px;align-items:center"><input type="checkbox" id="w-avisos" ${w.avisos ? 'checked' : ''} style="width:auto"> Avisar quando houver novidade no Núcleo (o aviso nunca diz o assunto)</label>
+        <div class="linha"><button class="link" id="w-sair">Desvincular WhatsApp</button></div>`
+      $('#w-avisos').onchange = async (e) => { await api('POST', '/api/whats/avisos', { ligado: e.target.checked }); toast('Pronto.') }
+      $('#w-sair').onclick = async () => { if (!confirm('Desvincular o seu WhatsApp?')) return; await api('DELETE', '/api/whats'); carregarWhats() }
+      return
+    }
+    if (!w.disponivel) {
+      el.innerHTML = `<h3>WhatsApp</h3><p class="mut">Em breve você vai poder conversar com a sua assistente também pelo WhatsApp.</p>`
+      return
+    }
+    el.innerHTML = `<h3>Vincular meu WhatsApp</h3><p class="mut">Converse com a sua assistente pelo WhatsApp. Cada um do casal vincula o próprio número; as conversas continuam separadas.</p>
+      <div class="linha"><button class="btn btn-pri" id="w-vincular">Vincular meu WhatsApp</button></div><div id="w-passo"></div>`
+    $('#w-vincular').onclick = async () => {
+      try {
+        const j = await api('POST', '/api/whats/codigo')
+        $('#w-passo').innerHTML = `<p class="mut" style="margin-top:14px">Toque no botão e envie a mensagem que já vai escrita. O código vale ${j.vale_min} minutos.</p>
+          <div class="codigo">${esc(j.codigo)}</div><div class="linha"><a class="btn btn-sec" id="w-link" target="_blank" rel="noopener" href="${esc(j.link)}">Abrir o WhatsApp e enviar</a></div>`
+        clearInterval(esperaWhats)
+        let voltas = 0
+        esperaWhats = setInterval(async () => { if (++voltas > 120) return clearInterval(esperaWhats); const x = await api('GET', '/api/whats').catch(() => ({})); if (x.vinculado) { toast('WhatsApp vinculado!'); carregarWhats() } }, 5000)
+      } catch (err) { toast(err.message) }
+    }
   }
   async function usarConvite(cod) {
     try {

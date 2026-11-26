@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY, usuario INTEGER NOT
   prioridade TEXT NOT NULL DEFAULT '', criado REAL NOT NULL);
 """
 
+from app.whats import ESQUEMA as _ESQUEMA_WHATS  # noqa: E402  (spec 59: WhatsApp)
+ESQUEMA += _ESQUEMA_WHATS
+
 
 class BancoSQLite:
     def __init__(self, caminho: str):

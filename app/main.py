@@ -19,12 +19,12 @@ import threading
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from app import admin, auth, mailer, match, senha_rotas
+from app import admin, auth, mailer, match, senha_rotas, whats
 from produtos_core import acesso, armazenamento
 from app.config import Config, carregar
 from app.db import Banco, agora
@@ -61,13 +61,14 @@ Responda SÓ um JSON: {{"sinais": [{{"tema": "<id>", "estado": "<estado>"}}]}} (
 Mensagem: {texto}"""
 
 
-def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
+def criar_app(cfg: Config | None = None, llm=None, gateway: whats.Gateway | None = None) -> FastAPI:
     cfg = cfg or carregar()
     os.makedirs(cfg.dados, exist_ok=True)
     db = Banco(os.path.join(cfg.dados, "boateazul.db"))
     admin.preparar(db)
     app = FastAPI(title="Boate Azul", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.cfg, app.state.db = cfg, db
+    gw = gateway or whats.Gateway(cfg.canais_url, cfg.canais_token)
 
     def chamar_llm(mensagens: list[dict], max_tokens: int = 900, temperatura: float = 0.85) -> str:
         if llm:
@@ -166,7 +167,7 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
             if t in match.TEMAS and e in match.ESTADOS:
                 db.exec("INSERT INTO sinais(usuario,tema,estado,origem,atualizado) VALUES(?,?,?,?,?) ON CONFLICT(usuario,tema) DO UPDATE SET estado=excluded.estado, origem=excluded.origem, atualizado=excluded.atualizado",
                         (uid, t, e, "conversa", agora()))
-        return match.revelar(db, casal_de(uid) or {})
+        return revelar(casal_de(uid) or {})
 
     def atualizar_memoria(uid: int) -> None:
         try:
@@ -180,6 +181,56 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
                         (uid, novo.strip()[:8000], agora()))
         except Exception:  # noqa: BLE001
             log.exception("memória não atualizada")
+
+    # ------------------------------------------------ WhatsApp (spec 59)
+    def casa() -> dict | None:
+        return db.um("SELECT * FROM whats_casa WHERE id=1")
+
+    def whats_enviar(conversa: str, texto: str, chave: str) -> bool:
+        k = casa()
+        if not k or k["estado"] != "connected":
+            return False
+        try:
+            gw.enviar(k["conexao"], conversa, texto, chave)
+            return True
+        except whats.CanalErro as e:
+            log.warning("whats não enviado: %s", e)
+            return False
+
+    def revelar(casal: dict) -> list[str]:
+        """Revela matches novos e avisa os DOIS no WhatsApp, sem dizer o tema (a tela pode estar à vista)."""
+        novos = match.revelar(db, casal)
+        if novos:
+            for m in db.todos("SELECT w.usuario, w.conversa FROM whats_vinculos w JOIN membros m ON m.usuario=w.usuario WHERE m.casal=? AND w.avisos=1 AND w.conversa IS NOT NULL", (casal["id"],)):
+                whats_enviar(m["conversa"], f"Vocês têm novidade no Núcleo do casal. Abra o app para ver: {cfg.base_url}/app",
+                             f"nucleo:{casal['id']}:{m['usuario']}:{','.join(novos)}")
+        return novos
+
+    def responder(u: dict, texto: str) -> str:
+        """A conversa privada (app e WhatsApp usam a mesma): limites do plano, IA, memória e sinais."""
+        exigir_adulto(u)
+        texto = texto.strip()[:3000]
+        if not texto:
+            raise HTTPException(422, "escreva a mensagem")
+        if plano_de(u) not in ("conexao", "intimo"):
+            hoje = db.um("SELECT COUNT(*) n FROM mensagens WHERE usuario=? AND papel='usuario' AND criado>?", (u["id"], hoje_ini()))["n"]
+            if hoje >= GRATIS_MSGS_DIA:
+                raise HTTPException(402, f"no plano grátis são {GRATIS_MSGS_DIA} mensagens por dia; no Conexão a conversa é sem limite")
+        hist = db.todos("SELECT papel, texto FROM mensagens WHERE usuario=? ORDER BY criado DESC, id DESC LIMIT 16", (u["id"],))[::-1]
+        msgs = [{"role": "system", "content": sistema(u)}] + [{"role": "user" if m["papel"] == "usuario" else "assistant", "content": m["texto"]} for m in hist]
+        msgs.append({"role": "user", "content": texto})
+        try:
+            resposta = chamar_llm(msgs, 1100)
+        except Exception:  # noqa: BLE001
+            log.exception("IA fora")
+            raise HTTPException(503, "a assistente está ocupada agora; tente de novo em instantes")
+        db.exec("INSERT INTO mensagens(usuario,papel,texto,criado) VALUES(?,?,?,?)", (u["id"], "usuario", texto, agora()))
+        db.exec("INSERT INTO mensagens(usuario,papel,texto,criado) VALUES(?,?,?,?)", (u["id"], "ia", resposta, agora() + 0.001))
+        n = db.um("SELECT COUNT(*) n FROM mensagens WHERE usuario=? AND papel='usuario'", (u["id"],))["n"]
+        threading.Thread(target=extrair_sinais, args=(u["id"], texto), daemon=True).start()
+        if n % MEMORIA_A_CADA == 0:
+            threading.Thread(target=atualizar_memoria, args=(u["id"],), daemon=True).start()
+        return resposta
 
     @app.exception_handler(json.JSONDecodeError)
     async def corpo_invalido(request: Request, exc: Exception):
@@ -272,7 +323,7 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
             raise HTTPException(409, "este é o seu próprio convite: mande o link para o(a) parceiro(a)")
         db.exec("INSERT INTO membros(casal,usuario,entrou) VALUES(?,?,?)", (c["id"], u["id"], agora()))
         db.exec("UPDATE casais SET estado='ativo' WHERE id=?", (c["id"],))
-        novos = match.revelar(db, casal_de(u["id"]))
+        novos = revelar(casal_de(u["id"]))
         return {"ok": True, "revelados": len(novos)}
 
     @app.post("/api/casal/{acao}")
@@ -285,7 +336,7 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
             db.exec("UPDATE casais SET estado='pausado' WHERE id=?", (c["id"],))
         elif acao == "retomar" and c["estado"] == "pausado":
             db.exec("UPDATE casais SET estado='ativo' WHERE id=?", (c["id"],))
-            match.revelar(db, casal_de(u["id"]))
+            revelar(casal_de(u["id"]))
         elif acao == "desvincular":
             # encerra para os dois; o núcleo some. As conversas e sinais privados continuam de cada um.
             db.exec("UPDATE casais SET estado='encerrado' WHERE id=?", (c["id"],))
@@ -308,7 +359,7 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
             raise HTTPException(402, "fantasias e jogos fazem parte do plano Íntimo")
         db.exec("INSERT INTO sinais(usuario,tema,estado,origem,atualizado) VALUES(?,?,?,?,?) ON CONFLICT(usuario,tema) DO UPDATE SET estado=excluded.estado, origem=excluded.origem, atualizado=excluded.atualizado",
                 (u["id"], t, e, "cartao", agora()))
-        novos = match.revelar(db, casal_de(u["id"]) or {})
+        novos = revelar(casal_de(u["id"]) or {})
         return {"ok": True, "revelados": len(novos)}
 
     @app.get("/api/nucleo")
@@ -362,30 +413,166 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
     @app.post("/api/conversa")
     async def conversar(request: Request):
         u = usuario(request)
-        exigir_adulto(u)
         b = await request.json()
-        texto = str(b.get("texto") or "").strip()[:3000]
-        if not texto:
-            raise HTTPException(422, "escreva a mensagem")
-        if plano_de(u) not in ("conexao", "intimo"):
-            hoje = db.um("SELECT COUNT(*) n FROM mensagens WHERE usuario=? AND papel='usuario' AND criado>?", (u["id"], hoje_ini()))["n"]
-            if hoje >= GRATIS_MSGS_DIA:
-                raise HTTPException(402, f"no plano grátis são {GRATIS_MSGS_DIA} mensagens por dia; no Conexão a conversa é sem limite")
-        hist = db.todos("SELECT papel, texto FROM mensagens WHERE usuario=? ORDER BY criado DESC, id DESC LIMIT 16", (u["id"],))[::-1]
-        msgs = [{"role": "system", "content": sistema(u)}] + [{"role": "user" if m["papel"] == "usuario" else "assistant", "content": m["texto"]} for m in hist]
-        msgs.append({"role": "user", "content": texto})
+        return {"resposta": await run_in_threadpool(responder, u, str(b.get("texto") or ""))}
+
+    # ------------------------------------------------ WhatsApp: vínculo de cada pessoa (spec 59)
+    def numero_casa() -> str:
+        k = casa()
+        return (k["numero"] if k and k["numero"] else "") or cfg.whats_numero
+
+    @app.get("/api/whats")
+    def whats_meu(request: Request):
+        u = usuario(request)
+        v = db.um("SELECT * FROM whats_vinculos WHERE usuario=?", (u["id"],))
+        k = casa()
+        return {"disponivel": bool(k and k["estado"] == "connected" and numero_casa()), "vinculado": bool(v and v["conversa"]),
+                "numero": whats.mascarar(v["numero"]) if v else "", "avisos": bool(v["avisos"]) if v else True}
+
+    @app.post("/api/whats/codigo")
+    def whats_codigo(request: Request):
+        u = usuario(request)
+        exigir_adulto(u)
+        n = numero_casa()
+        if not n:
+            raise HTTPException(503, "o WhatsApp da Boate Azul ainda não está ligado; tente mais tarde")
+        cod = whats.novo_codigo(db, u["id"], agora())
+        return {"codigo": cod, "link": f"https://wa.me/{n}?text={cod}", "vale_min": whats.CODIGO_VALE_S // 60}
+
+    @app.post("/api/whats/avisos")
+    async def whats_avisos(request: Request):
+        u = usuario(request)
+        b = await request.json()
+        db.exec("UPDATE whats_vinculos SET avisos=? WHERE usuario=?", (1 if b.get("ligado") else 0, u["id"]))
+        return {"ok": True}
+
+    @app.delete("/api/whats")
+    def whats_desvincular(request: Request):
+        u = usuario(request)
+        db.exec("DELETE FROM whats_vinculos WHERE usuario=?", (u["id"],))
+        db.exec("DELETE FROM whats_codigos WHERE usuario=?", (u["id"],))
+        return {"ok": True}
+
+    def tratar_whats(conversa: str, numero: str, texto: str, chave: str) -> None:
+        """Mensagem que chegou no número da casa: vínculo por código, conversa privada ou convite para o cadastro."""
+        v = db.um("SELECT * FROM whats_vinculos WHERE conversa=?", (conversa,))
+        dono = whats.dono_do_codigo(db, texto, agora())
+        if dono and not v:
+            if numero and db.um("SELECT 1 FROM whats_vinculos WHERE numero=? AND usuario<>?", (numero, dono)):
+                whats_enviar(conversa, "Este número já está vinculado a outra conta da Boate Azul.", chave + ":r")
+                return
+            db.exec("INSERT INTO whats_vinculos(usuario,conversa,numero,avisos,vinculado) VALUES(?,?,?,1,?) ON CONFLICT(usuario) DO UPDATE SET conversa=excluded.conversa, numero=excluded.numero, vinculado=excluded.vinculado",
+                    (dono, conversa, numero, agora()))
+            db.exec("DELETE FROM whats_codigos WHERE usuario=?", (dono,))
+            nome = perfil(dono)["nome"] or ""
+            whats_enviar(conversa, f"Pronto{', ' + nome if nome else ''}! Seu WhatsApp está vinculado. Pode conversar comigo por aqui: "
+                         "é a mesma conversa privada do app, só sua.", chave + ":r")
+            return
+        if not v:
+            whats_enviar(conversa, f"Oi! Aqui é a Boate Azul. Para conversar por aqui, crie sua conta em {cfg.base_url} e toque em "
+                         "\"Vincular meu WhatsApp\" no app.", chave + ":r")
+            return
+        if dono:  # mandou um código, mas este WhatsApp já está vinculado
+            whats_enviar(conversa, "Este WhatsApp já está vinculado. Pode conversar comigo normalmente.", chave + ":r")
+            return
+        u = db.um("SELECT * FROM usuarios WHERE id=?", (v["usuario"],))
+        if not u:
+            return
         try:
-            resposta = await run_in_threadpool(chamar_llm, msgs, 1100)
-        except Exception:  # noqa: BLE001
-            log.exception("IA fora")
-            raise HTTPException(503, "a assistente está ocupada agora; tente de novo em instantes")
-        db.exec("INSERT INTO mensagens(usuario,papel,texto,criado) VALUES(?,?,?,?)", (u["id"], "usuario", texto, agora()))
-        db.exec("INSERT INTO mensagens(usuario,papel,texto,criado) VALUES(?,?,?,?)", (u["id"], "ia", resposta, agora() + 0.001))
-        n = db.um("SELECT COUNT(*) n FROM mensagens WHERE usuario=? AND papel='usuario'", (u["id"],))["n"]
-        threading.Thread(target=extrair_sinais, args=(u["id"], texto), daemon=True).start()
-        if n % MEMORIA_A_CADA == 0:
-            threading.Thread(target=atualizar_memoria, args=(u["id"],), daemon=True).start()
-        return {"resposta": resposta}
+            resposta = responder(u, texto)
+        except HTTPException as e:
+            resposta = f"{e.detail[:1].upper()}{e.detail[1:]}. {cfg.base_url}/app"
+        whats_enviar(conversa, resposta, chave + ":r")
+
+    @app.post("/hooks/whats")
+    async def webhook_whats(request: Request, tarefas: BackgroundTasks):
+        k = casa()
+        corpo = await request.body()
+        if not k or not whats.assinatura_ok(k["segredo"], request.headers.get("x-luar-timestamp", ""), request.headers.get("x-luar-signature", ""), corpo):
+            raise HTTPException(401, "assinatura")
+        ev = json.loads(corpo)
+        eid = str(ev.get("event_id") or request.headers.get("x-luar-event-id") or "")
+        if eid:
+            if db.um("SELECT 1 FROM whats_eventos WHERE id=?", (eid,)):
+                return {"ok": True, "repetido": True}
+            db.exec("INSERT INTO whats_eventos(id,recebido) VALUES(?,?)", (eid, agora()))
+        tipo = ev.get("type")
+        if tipo == "connection.state":
+            st = (ev.get("state") or {}).get("state")
+            if st:
+                db.exec("UPDATE whats_casa SET estado=?, atualizado=? WHERE id=1", (st, agora()))
+            return {"ok": True}
+        if tipo != "message.created":
+            return {"ok": True, "ignorado": tipo}
+        conv, msg = ev.get("conversation") or {}, ev.get("message") or {}
+        externo = str(conv.get("external_id") or "")
+        if not externo or msg.get("direction") == "outgoing_echo":
+            return {"ok": True, "ignorado": "eco ou sem conversa"}
+        texto = str(msg.get("text") or "").strip() or "[a pessoa mandou um anexo]"
+        tarefas.add_task(tratar_whats, externo, whats.numero_de(conv), texto, "msg:" + str(msg.get("external_id") or eid))
+        return {"ok": True}
+
+    # ------------------------------------------------ WhatsApp da casa (/admin)
+    def vista_casa(view: dict | None = None) -> dict:
+        k = casa()
+        out = {"estado": k["estado"] if k else "desligado", "numero": whats.mascarar(k["numero"]) if k and k["numero"] else "",
+               "vinculados": db.um("SELECT COUNT(*) n FROM whats_vinculos WHERE conversa IS NOT NULL")["n"]}
+        passo = (view or {}).get("step") or {}
+        if passo:
+            out["qr"] = (passo.get("qr") or {}).get("data")
+            out["codigo_pareamento"] = passo.get("pairing_code")
+        return out
+
+    def atualizar_casa(view: dict) -> None:
+        con = view.get("connection") or view
+        numero = re.sub(r"\D", "", str(con.get("external_label") or ""))
+        db.exec("UPDATE whats_casa SET estado=?, numero=CASE WHEN ?<>'' THEN ? ELSE numero END, atualizado=? WHERE id=1",
+                (con.get("state") or "pending_auth", numero, numero, agora()))
+
+    def rotas_whats_admin(checar) -> None:
+        @app.get("/api/painel/whats")
+        def admin_whats(request: Request):
+            checar(request)
+            k = casa()
+            view = None
+            if k and k["estado"] != "connected":
+                try:
+                    view = gw.status(k["conexao"])
+                    atualizar_casa(view)
+                except whats.CanalErro as e:
+                    log.warning("status da casa: %s", e)
+            return vista_casa(view)
+
+        @app.post("/api/painel/whats/conectar")
+        def admin_whats_conectar(request: Request):
+            checar(request)
+            try:
+                view = gw.conectar()
+            except whats.CanalErro as e:
+                raise HTTPException(502, f"gateway: {e.codigo}")
+            con = view.get("connection") or view
+            segredo = secrets.token_urlsafe(32)
+            db.exec("DELETE FROM whats_casa WHERE id=1")
+            db.exec("INSERT INTO whats_casa(id,conexao,estado,numero,segredo,atualizado) VALUES(1,?,?,'',?,?)",
+                    (con["id"], con.get("state") or "pending_auth", segredo, agora()))
+            try:
+                gw.entrega(con["id"], f"{cfg.webhook_base}/hooks/whats", segredo)
+            except whats.CanalErro as e:
+                raise HTTPException(502, f"gateway (entrega): {e.codigo}")
+            atualizar_casa(view)
+            return vista_casa(view)
+
+        @app.post("/api/painel/whats/desconectar")
+        def admin_whats_desconectar(request: Request):
+            checar(request)
+            k = casa()
+            if k:
+                try:
+                    gw.acao(k["conexao"], "disconnect")
+                except whats.CanalErro as e:
+                    log.warning("desconectar casa: %s", e)
+                db.exec("UPDATE whats_casa SET estado='disconnected', atualizado=? WHERE id=1", (agora(),))
+            return vista_casa()
 
     # ------------------------------------------------ Cakto (assinatura por casal)
     @app.post("/api/cakto")
@@ -422,8 +609,10 @@ def criar_app(cfg: Config | None = None, llm=None) -> FastAPI:
         return {"ok": True, "ignorado": evento}
 
     # ------------------------------------------------ páginas
-    app.include_router(admin.rotas(db, cfg.segredo_sessao, """SELECT u.email, u.criado, a.plano, a.ativo_ate, (a.ativo_ate > strftime('%s','now')) ativo
-        FROM usuarios u LEFT JOIN assinaturas a ON a.usuario=u.id ORDER BY u.criado DESC""", seguro=not cfg.dev))
+    rotas_admin = admin.rotas(db, cfg.segredo_sessao, """SELECT u.email, u.criado, a.plano, a.ativo_ate, (a.ativo_ate > strftime('%s','now')) ativo
+        FROM usuarios u LEFT JOIN assinaturas a ON a.usuario=u.id ORDER BY u.criado DESC""", seguro=not cfg.dev)
+    rotas_whats_admin(rotas_admin.checar)
+    app.include_router(rotas_admin)
 
     @app.get("/admin", response_class=HTMLResponse)
     def pagina_admin():
